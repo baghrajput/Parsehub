@@ -885,6 +885,49 @@ def batch_execute_runs():
 
 # ========== PROJECTS ENDPOINTS ==========
 
+
+@app.route('/api/projects/<token>', methods=['DELETE'])
+def delete_project(token: str):
+    if not validate_api_key(request):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        confirm = request.args.get('confirm', 'false').lower() == 'true'
+        if not confirm:
+            return jsonify({
+                'success': False,
+                'error': 'Deletion requires confirmation'
+            }), 400
+
+        project = g.db.get_project_by_token(token)
+        if not project:
+            return jsonify({
+                'success': False,
+                'error': 'Project not found'
+            }), 404
+
+        result = g.db.delete_project_by_token(token)
+
+        if not result.get('success'):
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to delete project')
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'message': 'Project deleted successfully',
+            'token': token
+        }), 200
+
+    except Exception as e:
+        logger.error(f'[API] Error deleting project {token}: {e}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/projects', methods=['GET'])
 def get_projects():
     """
