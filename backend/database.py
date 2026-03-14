@@ -33,6 +33,47 @@ else:
 
 
 class ParseHubDatabase:
+
+    def delete_project_by_token(self, token: str):
+    try:
+        conn = self.connect()
+        cursor = conn.cursor()
+
+        # get project id
+        cursor.execute("SELECT id FROM projects WHERE token = %s", (token,))
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return {"success": False, "error": "Project not found"}
+
+        project_id = row[0]
+
+        # delete dependent records first
+        cursor.execute("DELETE FROM runs WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM product_data WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM monitoring_sessions WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM project_metadata WHERE project_id = %s", (project_id,))
+
+        # unlink metadata instead of deleting
+        cursor.execute("""
+            UPDATE metadata
+            SET project_id = NULL,
+                project_token = NULL
+            WHERE project_token = %s
+        """, (token,))
+
+        # finally delete project
+        cursor.execute("DELETE FROM projects WHERE id = %s", (project_id,))
+
+        conn.commit()
+        conn.close()
+
+        return {"success": True, "token": token}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+        
     # Shared thread-local storage for all instances of ParseHubDatabase
     _shared_local = threading.local()
 
