@@ -17,6 +17,7 @@ import {
   AlertCircle,
   X,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 import SchedulerModal from "./SchedulerModal";
 import ColumnStatisticsModal from "./ColumnStatisticsModal";
@@ -155,6 +156,43 @@ export default function ProjectsList({
     setShowCSVModal(true);
   };
 
+
+  const handleDeleteProject = async (token: string, name: string) => {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${name}"?`
+  );
+
+  if (!confirmed) return;
+
+  setLoading(token);
+  try {
+    const response = await fetch(`/api/projects/${token}?confirm=true`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...getApiHeaders(),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to delete project");
+    }
+
+    alert("Project deleted successfully");
+
+    window.dispatchEvent(new CustomEvent("projectStatusUpdated"));
+    router.refresh();
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    alert(
+      `Failed to delete project: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  } finally {
+    setLoading(null);
+  }
+};
   const handleCancelRun = async (token: string) => {
     setLoading(token);
     try {
